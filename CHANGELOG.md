@@ -2,6 +2,12 @@
 
 版本号与 Web 页头、`/api/version` 一致；详细技术说明见 [开发说明](docs/DEVELOPMENT.md)。
 
+## v0.33.1 — 2026-11-03
+
+- 发布自动化：`.github/workflows/release.yml`，推 `v*` 标签自动构建源码包并创建 Release。
+- 新增 `code/scripts/make-release.sh`（本地打包 + 校验和 + 发布说明）。
+- README、使用手册、API 文档、CHANGELOG、MIT LICENSE 入库。
+
 ## v0.33.0 — 2026-11-03
 
 - **逐字稿/清洗稿支持拆分**：按词级时间戳或时间比例，把一句里多个说话人拆开；
