@@ -1201,10 +1201,10 @@ class TestChannelClusters(unittest.TestCase):
         # 同一人：3 条网页样本 + 1 条车机样本
         vecs = [web + 0.02 * rng.standard_normal(4).astype("float32") for _ in range(3)]
         vecs.append(car + 0.02 * rng.standard_normal(4).astype("float32"))
-        db = self._db({"刘益清": vecs})
+        db = self._db({"张三": vecs})
         query = {0: car + 0.02 * rng.standard_normal(4).astype("float32")}
         names, detail = match_voiceprints(db, query, threshold=0.30, margin=0.0)
-        self.assertEqual(names.get(0), "刘益清")
+        self.assertEqual(names.get(0), "张三")
         self.assertGreater(detail["0"]["score"], 0.95)
         self.assertEqual(detail["0"]["channels"], 2)
 

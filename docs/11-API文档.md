@@ -50,7 +50,7 @@ curl -H "Authorization: Bearer $KEY" \
   -F file=@会议.m4a \
   -F model=tingji-asr-hq \
   -F language=zh \
-  -F "prompt=人名：刘益清、李彦昆。术语：胎心、社康。" \
+  -F "prompt=人名：张三、李四。术语：交付、预算。" \
   http://127.0.0.1:8000/v1/audio/transcriptions
 ```
 
@@ -133,7 +133,7 @@ Location: /v1/audio/transcriptions/{job_id}
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/jobs/{jid}/labelqueue?per_cluster=3` | 取待标注片段 |
-| POST | `/api/jobs/{jid}/labels` | 提交标注 `{"items":[{"idx":1,"label":"刘益清"}]}` |
+| POST | `/api/jobs/{jid}/labels` | 提交标注 `{"items":[{"idx":1,"label":"张三"}]}` |
 | DELETE | `/api/jobs/{jid}/labels` | 清空标注 |
 | GET | `/api/jobs/{jid}/accuracy` | 标注准确率统计 |
 | GET | `/api/jobs/{jid}/mixed` | 疑似多人混说的片段 |
@@ -156,7 +156,7 @@ Location: /v1/audio/transcriptions/{job_id}
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/hotwords` | 列表（`term/weight/type/aliases`） |
-| POST | `/api/hotwords` | 新增/更新 `{"term":"刘益清","weight":1.0,"type":"term"}` |
+| POST | `/api/hotwords` | 新增/更新 `{"term":"张三","weight":1.0,"type":"term"}` |
 | DELETE | `/api/hotwords/{term}` | 删除 |
 
 ### 2.6 设置
