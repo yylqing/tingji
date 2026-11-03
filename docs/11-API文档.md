@@ -72,6 +72,9 @@ curl -H "Authorization: Bearer $KEY" \
 
 `text` 直接返回纯文本；`srt` / `vtt` 返回字幕（带 `[说话人]` 前缀）。
 
+> **说话人只来自 `model=tingji-asr-hq`**（或任何以 `-hq` 结尾的名字）。
+> 用 `tingji-asr` / `whisper-1` 时不会做分离，这是有意的——快模型不跑分离，省 3–5 秒。
+
 **长音频（异步）**：超过 `openai_api.sync_max_audio_sec`（默认 1800 秒）返回：
 
 ```
@@ -87,6 +90,19 @@ Location: /v1/audio/transcriptions/{job_id}
 ```
 
 进行中返回 `status/progress/stage`；`DELETE` 同路径可取消。
+
+完成后（v0.33.4+）：
+
+```json
+{"id":"…","status":"done",
+ "text":"张三：我们先过一下进展。\n李四：风控那边有个依赖…",
+ "segments":[{"start":0.05,"end":3.5,"text":"…","spk":0,"speaker":"张三"}],
+ "x_tingji":{"speakers":["张三","李四"]}}
+```
+
+- `segments[].speaker` 与 `text` 都可直接使用；说话人来自流水线的分离结果，
+  匹配到声纹库则显示真名，否则为「说话人N」；
+- 短碎片（<350ms 且 ≤6 字）会并入相邻同一人的轮次，避免 A/B/A 抖动。
 
 ---
 

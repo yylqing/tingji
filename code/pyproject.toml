@@ -1,6 +1,6 @@
 [project]
 name = "tingji"
-version = "0.33.3"
+version = "0.33.4"
 description = "本地离线中文会议转写与纪要系统"
 requires-python = ">=3.11,<3.13"
 dependencies = [

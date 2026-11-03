@@ -1293,3 +1293,31 @@ class TestSplitSegment(unittest.TestCase):
         segs = db.get_segments(jid)
         self.assertEqual([s["idx"] for s in segs], [0, 1, 2])
         self.assertEqual(segs[2]["final_text"], "二")
+
+
+class TestSpeakerText(unittest.TestCase):
+    def _segs(self, items):
+        return [{"start_ms": s, "end_ms": e, "text": t, "spk": k} for s, e, t, k in items]
+
+    def test_adjacent_same_speaker_merged(self):
+        from app.openaiapi import speaker_text
+        segs = self._segs([(0, 2000, "你好", 0), (2000, 4000, "我是张三", 0)])
+        self.assertEqual(speaker_text(segs, {0: "张三"}), "张三：你好我是张三")
+
+    def test_short_fragment_smoothed(self):
+        from app.openaiapi import speaker_text
+        segs = self._segs([(0, 3000, "我们先过一下进展", 0),
+                           (3000, 3200, "嗯", 1),
+                           (3200, 6000, "支付灰度已经上线", 0)])
+        out = speaker_text(segs, {0: "张三", 1: "李四"})
+        self.assertEqual(out, "张三：我们先过一下进展嗯支付灰度已经上线")
+
+    def test_real_short_turns_not_merged(self):
+        from app.openaiapi import speaker_text
+        # 正常的一问一答（各 1.5 秒、文字多），不能被并成一个人
+        segs = self._segs([(0, 1500, "这个方案可以试", 0),
+                           (1500, 3000, "好我下周给结论", 1)])
+        out = speaker_text(segs, {0: "张三", 1: "李四"})
+        self.assertIn("张三：", out)
+        self.assertIn("李四：", out)
+        self.assertEqual(len(out.split("\n")), 2)

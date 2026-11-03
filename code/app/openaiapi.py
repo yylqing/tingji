@@ -143,20 +143,50 @@ def quick_transcribe(cfg, db, path: Path, include_speakers: bool = False,
     return {"segments": segs, "names": names}
 
 
-def speaker_text(segs: list[dict], names: dict[int, str]) -> str:
-    """把分段转成"说话人：内容"，相邻同一人合并，避免一行一句。"""
-    lines: list[tuple[str, str]] = []
+def speaker_text(segs: list[dict], names: dict[int, str], min_turn_ms: int = 350) -> str:
+    """把分段转成"说话人：内容"。
+
+    处理两件事：
+    1. 相邻同一人合并（避免一行一句）；
+    2. **短轮次平滑**：一句话被切成 <0.9s 的碎片时，说话人判定很不稳，会出现
+       A/B/A/B 的抖动。把这种短碎片并回前后同一人的轮次里，文本才读得通。
+    """
+    turns: list[dict] = []
     for s in segs:
         txt = (s.get("text") or "").strip()
         if not txt:
             continue
         spk = s.get("spk", -1)
-        who = names.get(spk) or (f"说话人{spk + 1}" if isinstance(spk, int) and spk >= 0 else "未知")
-        if lines and lines[-1][0] == who:
-            lines[-1] = (who, lines[-1][1] + txt)
+        dur = max(0, int(s.get("end_ms", 0)) - int(s.get("start_ms", 0)))
+        if turns and turns[-1]["spk"] == spk:
+            turns[-1]["text"] += txt
+            turns[-1]["end_ms"] = int(s.get("end_ms", 0))
+            turns[-1]["dur"] += dur
         else:
-            lines.append((who, txt))
-    return "\n".join(f"{who}：{txt}" for who, txt in lines)
+            turns.append({"spk": spk, "text": txt, "start_ms": int(s.get("start_ms", 0)),
+                          "end_ms": int(s.get("end_ms", 0)), "dur": dur})
+
+    # 短轮次平滑：A(短) B(短) A → 合并成 A
+    changed = True
+    while changed and len(turns) > 2:
+        changed = False
+        for i in range(1, len(turns) - 1):
+            cur, prev, nxt = turns[i], turns[i - 1], turns[i + 1]
+            # 只合并"极短 + 文字极少"的碎片：整段话被切碎时会出现 A/B/A 抖动，
+            # 但真正的快速对话也可能 <1s，所以门槛要严，避免把两人对话并成一个人
+            if (cur["dur"] < min_turn_ms and len(cur["text"]) <= 6
+                    and prev["spk"] == nxt["spk"]):
+                prev["text"] += cur["text"] + nxt["text"]
+                prev["end_ms"] = nxt["end_ms"]
+                prev["dur"] += cur["dur"] + nxt["dur"]
+                del turns[i:i + 2]
+                changed = True
+                break
+
+    def who(spk):
+        return names.get(spk) or (f"说话人{spk + 1}" if isinstance(spk, int) and spk >= 0 else "未知")
+
+    return "\n".join(f"{who(t['spk'])}：{t['text']}" for t in turns)
 
 
 def build_router(cfg, db) -> APIRouter:
@@ -264,10 +294,32 @@ def build_router(cfg, db) -> APIRouter:
             return {"id": jid, "status": job["status"], "progress": job["progress"],
                     "stage": job["stage"]}
         rows = db.get_segments(jid)
-        return {"id": jid, "status": "done", "text": "".join(
-            (r["final_text"] or r["clean_text"] or r["raw_text"]) for r in rows),
-            "segments": [{"start": round(r["start_ms"] / 1000, 2), "end": round(r["end_ms"] / 1000, 2),
-                          "text": r["final_text"] or r["clean_text"] or r["raw_text"]} for r in rows]}
+        # 异步任务的语言/说话人来自流水线；这里同样要把说话人带出来，
+        # 否则客户端（Memos 等）只读 text 字段时会以为"没有分离"
+        names: dict[int, str] = {}
+        sp_path = cfg.work_path / jid / "speakers.json"
+        if sp_path.exists():
+            try:
+                names = {int(k): v for k, v in
+                         json.loads(sp_path.read_text())["names"].items()}
+            except Exception:
+                names = {}
+        items = [{"start": round(r["start_ms"] / 1000, 2), "end": round(r["end_ms"] / 1000, 2),
+                  "text": r["final_text"] or r["clean_text"] or r["raw_text"],
+                  **({"spk": int(r["spk"])} if r["spk"] is not None and int(r["spk"]) >= 0 else {})}
+                 for r in rows]
+        segs = [{"text": it["text"], "spk": it.get("spk", -1)} for it in items]
+        spk_ids = {s["spk"] for s in segs if isinstance(s.get("spk"), int) and s["spk"] >= 0}
+        disp = {k: names.get(k) or f"说话人{k + 1}" for k in spk_ids}
+        for it in items:
+            if "spk" in it:
+                it["speaker"] = disp.get(it["spk"], "未知")
+        body = {"id": jid, "status": "done",
+                "text": speaker_text(segs, disp) if disp else "".join(s["text"] for s in segs),
+                "segments": items}
+        if disp:
+            body["x_tingji"] = {"speakers": [disp[k] for k in sorted(disp)]}
+        return body
 
     @router.delete("/v1/audio/transcriptions/{jid}")
     def cancel(jid: str, request: Request):
