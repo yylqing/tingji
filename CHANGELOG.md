@@ -2,6 +2,10 @@
 
 版本号与 Web 页头、`/api/version` 一致；详细技术说明见 [开发说明](docs/DEVELOPMENT.md)。
 
+## v0.33.5 — 2026-11-03
+
+- `json` 响应也返回 `x_tingji.speakers`（之前只有 `verbose_json` 有），客户端不必解析正文也能拿到说话人列表。
+
 ## v0.33.4 — 2026-11-03
 
 - 修复 **OpenAI 异步接口**（音频 >30 分钟）返回没有说话人的问题：`GET /v1/audio/transcriptions/{id}`

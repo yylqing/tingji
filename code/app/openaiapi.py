@@ -282,7 +282,9 @@ def build_router(cfg, db) -> APIRouter:
                              "hotwords": len(db.list_hotwords(True)),
                              **({"speakers": [names[k] for k in sorted(names)]} if include_spk else {})},
             }
-        return {"text": text, "x_tingji": {"model": model, "elapsed_sec": elapsed}}
+        return {"text": text,
+                "x_tingji": {"model": model, "elapsed_sec": elapsed,
+                             **({"speakers": [names[k] for k in sorted(names)]} if include_spk else {})}}
 
     @router.get("/v1/audio/transcriptions/{jid}")
     def job_status(jid: str, request: Request):
