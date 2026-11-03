@@ -70,13 +70,13 @@ PYTHONPATH=code .venv-funasr/bin/python -m app.cli selfcheck
 
 ```bash
 # 自动判断说话人数
-PYTHONPATH=code .venv-funasr/bin/python -m app.cli run 会议录音.aac
+PYTHONPATH=code .venv-funasr/bin/python -m app.cli run meeting-73min.aac
 
 # 已知人数时更稳（推荐）
-PYTHONPATH=code .venv-funasr/bin/python -m app.cli run 会议录音.aac --speakers 4
+PYTHONPATH=code .venv-funasr/bin/python -m app.cli run meeting-73min.aac --speakers 4
 
 # 强制重跑（忽略 sha256 去重）
-PYTHONPATH=code .venv-funasr/bin/python -m app.cli run 会议录音.aac --force
+PYTHONPATH=code .venv-funasr/bin/python -m app.cli run meeting-73min.aac --force
 ```
 
 产物在 `output/<文件名>/`：
@@ -160,7 +160,7 @@ curl -X POST http://127.0.0.1:8000/v1/audio/transcriptions \
 # 终端 A：消费队列
 PYTHONPATH=code .venv-funasr/bin/python -m app.cli worker
 # 终端 B：把文件放入队列 / 扫描 input/
-PYTHONPATH=code .venv-funasr/bin/python -m app.cli ingest ./会议录音.aac
+PYTHONPATH=code .venv-funasr/bin/python -m app.cli ingest ./meeting-73min.aac
 PYTHONPATH=code .venv-funasr/bin/python -m app.cli scan
 ```
 
@@ -1120,7 +1120,7 @@ webm weba opus ogg oga wma amr 3gp caf aiff aif
    （`iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch`）重试一次；
 3. 仍失败才抛出，错误信息原样带到任务页。
 
-验证：同一份 46 分钟 `会议2.aac` 修复后转写 **700 句**、完成归档
+验证：同一份 46 分钟 `meeting-46min.aac` 修复后转写 **700 句**、完成归档
 （`录音笔记/会议纪要/2026/2026-11-02 2103 带宽费用异常分析与管控会议/`）。
 
 > 教训：**长驻进程里模型加载失败后必须重置缓存再重试**，否则一次失败会污染后续所有任务。

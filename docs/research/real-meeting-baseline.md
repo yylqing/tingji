@@ -1,8 +1,8 @@
 # 真实会议录音基线（首次真机验证）
 
-> 日期 2026-10-31｜样本：`会议录音.aac`（1:12:55，AAC 44.1kHz 立体声）
+> 日期 2026-10-31｜样本：一段 73 分钟真实会议录音（1:12:55，AAC 44.1kHz 立体声）
 > 目的：用**真实多人会议**验证技术路线，暴露合成音频测不出的问题
-> 原始产物：[逐字稿](../../output/archive/reports/会议录音-逐字稿.md) · [诊断报告](../../output/archive/reports/会议录音-诊断报告.md)
+> 原始产物（逐字稿/诊断报告）为本地生成，未随仓库发布
 
 ---
 
@@ -159,7 +159,7 @@
 
 ```bash
 # 归一化
-ffmpeg -y -i "会议录音.aac" -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 16000 -ac 1 work/meeting_16k.wav
+ffmpeg -y -i "meeting-73min.aac" -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 16000 -ac 1 work/meeting_16k.wav
 
 # 转写（12.8× 实时，约 5.7 分钟）
 python bench/transcribe_long.py work/meeting_16k.wav output/meeting_funasr
