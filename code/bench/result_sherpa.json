@@ -1,0 +1,31 @@
+{
+  "engine": "sherpa-onnx 2.0.1 / pyannote-seg-3.0 + campplus zh_en",
+  "audio_sec": 39.57,
+  "model_load_sec": 0.17,
+  "diarize_sec": 1.26,
+  "rtf": 0.0319,
+  "speed_x_realtime": 31.35,
+  "peak_rss_mb": 223.4,
+  "num_speakers": 2,
+  "speakers": [
+    0,
+    1
+  ],
+  "segments": [
+    {
+      "start": 0.03,
+      "end": 22.71,
+      "spk": 0
+    },
+    {
+      "start": 22.66,
+      "end": 28.5,
+      "spk": 1
+    },
+    {
+      "start": 28.5,
+      "end": 39.6,
+      "spk": 0
+    }
+  ]
+}

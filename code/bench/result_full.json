@@ -1,0 +1,126 @@
+{
+  "audio": "bench/in/meeting_sample.wav",
+  "audio_sec": 39.57,
+  "mode": "full",
+  "model_load_sec": 14.46,
+  "infer_sec": 1.82,
+  "rtf": 0.0459,
+  "speed_x_realtime": 21.79,
+  "peak_rss_mb": 4352.0,
+  "sentences": [
+    {
+      "start_ms": 50,
+      "end_ms": 890,
+      "spk": 0,
+      "text": "各位同事，"
+    },
+    {
+      "start_ms": 1150,
+      "end_ms": 3870,
+      "spk": 0,
+      "text": "我们今天的周会主要讨论三件事，"
+    },
+    {
+      "start_ms": 4090,
+      "end_ms": 6390,
+      "spk": 0,
+      "text": "第一是第四季度的交付节奏，"
+    },
+    {
+      "start_ms": 6670,
+      "end_ms": 9090,
+      "spk": 0,
+      "text": "第二是数据平台的交移方案，"
+    },
+    {
+      "start_ms": 9390,
+      "end_ms": 11650,
+      "spk": 0,
+      "text": "第三是下个月的招聘计划。"
+    },
+    {
+      "start_ms": 11670,
+      "end_ms": 13690,
+      "spk": 1,
+      "text": "我先说一下交付的问题。"
+    },
+    {
+      "start_ms": 13990,
+      "end_ms": 16510,
+      "spk": 1,
+      "text": "目前我们有两个模块的进度，"
+    },
+    {
+      "start_ms": 16610,
+      "end_ms": 18010,
+      "spk": 1,
+      "text": "落后了大概一周，"
+    },
+    {
+      "start_ms": 18310,
+      "end_ms": 20450,
+      "spk": 1,
+      "text": "主要是接口连调卡住了，"
+    },
+    {
+      "start_ms": 20590,
+      "end_ms": 22550,
+      "spk": 1,
+      "text": "我觉得需要加一个人手。"
+    },
+    {
+      "start_ms": 22670,
+      "end_ms": 24470,
+      "spk": 2,
+      "text": "我补充一下数据平台这边我们已经认批，"
+    },
+    {
+      "start_ms": 24470,
+      "end_ms": 25430,
+      "spk": 2,
+      "text": "他做了标准查询，"
+    },
+    {
+      "start_ms": 25430,
+      "end_ms": 26450,
+      "spk": 2,
+      "text": "性能提升了大概三倍。"
+    },
+    {
+      "start_ms": 26450,
+      "end_ms": 28550,
+      "spk": 2,
+      "text": "但是我担心经营期间的收息会带来一致性问题。"
+    },
+    {
+      "start_ms": 28550,
+      "end_ms": 28790,
+      "spk": 1,
+      "text": "好，"
+    },
+    {
+      "start_ms": 28990,
+      "end_ms": 32549,
+      "spk": 1,
+      "text": "那这样交付这块拟出一个风险清单，"
+    },
+    {
+      "start_ms": 32830,
+      "end_ms": 35250,
+      "spk": 1,
+      "text": "周五之前给我数据迁移，"
+    },
+    {
+      "start_ms": 35250,
+      "end_ms": 37650,
+      "spk": 1,
+      "text": "就先做灰度招聘的事情，"
+    },
+    {
+      "start_ms": 37650,
+      "end_ms": 39385,
+      "spk": 1,
+      "text": "我下周跟人事对齐。"
+    }
+  ]
+}

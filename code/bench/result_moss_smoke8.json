@@ -1,0 +1,24 @@
+{
+  "model": "MOSS-Transcribe-Diarize 0.9B (fp32, CPU)",
+  "audio": "bench/audio/smoke8.wav",
+  "audio_sec": 8.0,
+  "load_sec": 2.31,
+  "generate_sec": 4.86,
+  "rtf": 0.608,
+  "speed_x_realtime": 1.65,
+  "new_tokens": 41,
+  "tok_per_sec": 8.43,
+  "peak_rss_mb": 4695.3,
+  "speakers": [
+    "S01"
+  ],
+  "raw": "[0.07][S01]各位同事，我们今天的周会主要讨论三件事，第一是第四季度的交付节奏，第二是数据平台[8.01]",
+  "segments": [
+    {
+      "start": 0.07,
+      "end": 8.01,
+      "spk": "S01",
+      "text": "各位同事，我们今天的周会主要讨论三件事，第一是第四季度的交付节奏，第二是数据平台"
+    }
+  ]
+}

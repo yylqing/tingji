@@ -1,0 +1,15 @@
+{
+  "label": "model",
+  "audio": "bench/in/hotword_sample.wav",
+  "hotwords": [
+    "沈知微",
+    "柯基",
+    "豆豆",
+    "西溪湿地",
+    "河坊街",
+    "半亩方塘"
+  ],
+  "infer_sec": 0.48,
+  "text": "沈知微上个周末带着他家的柯基豆豆去了杭州西溪湿地，中午在和坊街的一家叫半亩方塘的小馆子吃饭。",
+  "hotword_matches": []
+}

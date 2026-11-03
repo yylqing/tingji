@@ -1,0 +1,66 @@
+{
+  "audio": "bench/in/overlap_sample.wav",
+  "audio_sec": 23.06,
+  "mode": "full",
+  "model_load_sec": 14.36,
+  "infer_sec": 1.34,
+  "rtf": 0.0583,
+  "speed_x_realtime": 17.15,
+  "peak_rss_mb": 4071.4,
+  "sentences": [
+    {
+      "start_ms": 50,
+      "end_ms": 870,
+      "spk": 0,
+      "text": "各位同事，"
+    },
+    {
+      "start_ms": 1150,
+      "end_ms": 3850,
+      "spk": 0,
+      "text": "我们今天的周会主要讨论三件事。"
+    },
+    {
+      "start_ms": 4130,
+      "end_ms": 8109,
+      "spk": 1,
+      "text": "第一是那这一季度的交付结在你出一个风险清单，"
+    },
+    {
+      "start_ms": 8470,
+      "end_ms": 11870,
+      "spk": 1,
+      "text": "周五之前给我数据切的就先做灰度。"
+    },
+    {
+      "start_ms": 11990,
+      "end_ms": 14910,
+      "spk": 1,
+      "text": "我先说一下前我下的问题跟人事对齐，"
+    },
+    {
+      "start_ms": 14910,
+      "end_ms": 16870,
+      "spk": 2,
+      "text": "我们有两个模块的进度，"
+    },
+    {
+      "start_ms": 16970,
+      "end_ms": 18290,
+      "spk": 2,
+      "text": "落后了大概一周，"
+    },
+    {
+      "start_ms": 18670,
+      "end_ms": 20730,
+      "spk": 2,
+      "text": "主要是接口连调卡住了，"
+    },
+    {
+      "start_ms": 20950,
+      "end_ms": 22885,
+      "spk": 2,
+      "text": "我觉得需要加一个人手。"
+    }
+  ]
+}

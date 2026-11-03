@@ -1,0 +1,18 @@
+[project]
+name = "tingji"
+version = "0.33.0"
+description = "本地离线中文会议转写与纪要系统"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "torch==2.6.*", "torchaudio==2.6.*", "funasr==1.4.17", "modelscope>=1.20",
+  "sherpa-onnx==2.0.1", "soundfile>=0.12", "numpy>=1.26",
+  "fastapi>=0.115", "uvicorn[standard]>=0.32", "pydantic>=2.9",
+  "watchdog>=5", "httpx>=0.27", "pyyaml>=6", "jieba>=0.42",
+  "pypinyin>=0.53", "rapidfuzz>=3.9",
+]
+
+[project.scripts]
+tingji = "app.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

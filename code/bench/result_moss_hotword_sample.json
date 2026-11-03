@@ -1,0 +1,25 @@
+{
+  "model": "MOSS-Transcribe-Diarize 0.9B (fp32, CPU)",
+  "audio": "bench/in/hotword_sample.wav",
+  "audio_sec": 9.33,
+  "load_sec": 0.74,
+  "device": "cpu",
+  "generate_sec": 5.79,
+  "rtf": 0.621,
+  "speed_x_realtime": 1.61,
+  "new_tokens": 54,
+  "tok_per_sec": 9.32,
+  "peak_rss_mb": 5655.8,
+  "speakers": [
+    "S01"
+  ],
+  "raw": "[0.00][S01]沈知微上个周末带着她家的柯基豆豆去了杭州西溪湿地，中午在河坊街的一家叫半亩方塘的小馆子吃饭。[9.00]",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 9.0,
+      "spk": "S01",
+      "text": "沈知微上个周末带着她家的柯基豆豆去了杭州西溪湿地，中午在河坊街的一家叫半亩方塘的小馆子吃饭。"
+    }
+  ]
+}

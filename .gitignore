@@ -1,0 +1,25 @@
+# ---- 环境（隐藏目录，保留在本地）----
+.cache/
+.pythons/
+.venv*/
+.DS_Store
+*.pyc
+__pycache__/
+
+# ---- 运行时与产出 ----
+output/
+input/
+data/
+work/
+logs/
+dist/
+
+# ---- 敏感信息 ----
+code/config/access_token.txt
+code/config/config.yaml
+code/config/com.tingji.service.plist
+code/config/overrides.yaml
+
+# ---- 测试音频（体积大，本地保留）----
+code/bench/audio/
+code/bench/in/

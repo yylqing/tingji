@@ -1,0 +1,119 @@
+# 示例配置：复制为 config.yaml 后按需修改
+#   cp code/config/config.example.yaml code/config/config.yaml
+app:
+  data_dir: ./output/.runtime/data
+  work_dir: ./output/.runtime/work
+  input_dir: ./input
+  output_dir: ./output
+  log_level: INFO
+  max_concurrency: 1
+
+audio:
+  target_sr: 16000
+  loudness_normalize: true
+  preview_m4a: true
+
+asr:
+  provider: auto            # auto=按场景自动选 | funasr | sensevoice | funasr_nano          # funasr=会议（Paraformer）| sensevoice=叙事/情绪（自带情绪标签）
+  model: paraformer-zh
+  device: cpu
+  window_speech_sec: 1500   # 25 分钟/窗；2 小时实测 793s、峰值 3.35GB，内存不随时长增长
+  min_speech_ratio: 0.02   # 有效语音占比低于 2% 视为无人声，跳过识别（60s 纯噪声：20s→1.2s）
+  batch_size_s: 300
+
+diarization:
+  enabled: true
+  campplus_model: .cache/sherpa/campplus.onnx
+  min_cluster_segment_sec: 1.0
+  cluster_threshold: 0.40
+  merge_threshold: 0.85
+  backend: sherpa          # sherpa=帧级分离（推荐）| embedding=声纹聚类
+  max_speakers: 0          # 0=自动；已知人数时填 2-10 更稳
+  max_auto_speakers: 8     # 自动模式的人数上限（超过按质心合并）
+  match_threshold: 0.35    # 认名相似度阈值；实测网页录 vs 车内录仅 0.36-0.45，同信道可调到 0.6
+  match_margin: 0.08
+  channel_threshold: 0.75   # 同一人样本按信道（设备）聚类
+  max_channels: 4           # 每人最多保留几个信道簇
+  smooth_min_run: 1        # 标签平滑：孤立 run ≤N 段则合并
+  resplit: true            # 一句里两人时按停顿重切
+  resplit_max: 40
+  mask_non_speech: true    # 分离前把非语音置零（更稳）
+  embed_window_sec: 15     # 每个 turn 按 15s 窗口提声纹
+  overlap_detect: true
+  overlap_threshold: 0.62
+  overlap_floor: 0.45
+
+text:
+  filler_removal: true
+  repeat_removal: true
+  itn: true                # 中文数字规范化（三百毫秒→300毫秒）
+  rules_enabled: true      # 正则纠错规则（config/rules.txt）
+  rules_file: config/rules.txt
+
+hotwords:
+  enabled: true
+  l1_max: 50
+  l2_threshold: 0.85
+  l2_min_len: 2
+
+correction:
+  enabled: false
+  mode: block              # block=可读优先（默认）| segment=逐句严格（时间戳精确）
+  model: qwen3.5:9b-q4_K_M
+  batch_chars: 700
+  selective: true
+  max_length_ratio: 0.6
+
+refine:
+  enabled: true            # 段落化润色（口语→书面），需要 Ollama
+  model: qwen3.5:9b-q4_K_M
+  max_gap_ms: 2500          # 会议断句间隔；叙事模式自动放宽到 12000（哭泣/停顿不切断）
+  sad_gap_ms: 9000         # 哭泣/难过时允许更长停顿不断句
+  max_chars: 320
+  style: auto              # auto|meeting|narrative
+  max_blocks: 0            # 0=全部
+
+emotion:
+  enabled: true            # SenseVoice 情绪/事件（哭、笑、难过…）
+  device: cpu
+
+roles:
+  enabled: true            # 从内容推断说话人姓名/角色（仅在稿件有依据时）
+  model: qwen3.5:9b-q4_K_M
+  max_input_chars: 4000
+
+summary:
+  enabled: true            # 智能纪要（摘要 + 章节），需要 Ollama
+  model: qwen3.5:9b-q4_K_M
+  max_input_chars: 6000
+
+llm:
+  base_url: http://127.0.0.1:11434
+  timeout_sec: 300
+  keep_alive: "10m"
+
+obsidian:
+  vault_path: "./output/test-vault"            # 留空则只写 output/，不归档
+  per_note_folder: true    # 每条录音一个文件夹：md + 音频 + 字幕
+  notes_by_type: true      # 按内容类型分目录：会议纪要/日常对话/重要时刻…
+  notes_dir: 录音笔记
+  transcript_dir: 转写稿
+  attachment_dir: attachments/audio
+  title_prefix: ""
+  keep_source: true
+
+openai_api:
+  enabled: true
+  sync_max_audio_sec: 1800
+  rate_limit_per_min: 0     # 0=不限流   # ≤30 分钟同步返回，超过返回 202
+  max_upload_gb: 4
+  api_key: ""                # OpenAI 兼容接口专用（Memos 等客户端填这个）
+
+notify:
+  enabled: false          # 任务完成/失败时 POST 到 webhook
+  webhook_url: ""
+
+server:
+  bind: 0.0.0.0            # 0.0.0.0=局域网可访问；只想本机用就改回 127.0.0.1
+  port: 8000
+  token: ""                 # 留空=启动时自动生成（config/access_token.txt）
