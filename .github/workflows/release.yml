@@ -25,6 +25,19 @@ jobs:
           sha256sum "tingji-$V.tar.gz" "tingji-$V.zip" > SHA256SUMS
           ls -lh tingji-* SHA256SUMS
 
+      - name: Prune older releases
+        # 只保留当前版本：旧 Release 的附件里可能含过期内容（如截图），一并删掉
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release list --limit 100 --json tagName -q '.[].tagName' | while read -r t; do
+            [ -z "$t" ] && continue
+            [ "$t" = "$GITHUB_REF_NAME" ] && continue
+            echo "删除旧 Release: $t"
+            gh release delete "$t" --yes --cleanup-tag || true
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
