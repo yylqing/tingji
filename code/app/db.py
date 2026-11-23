@@ -186,6 +186,26 @@ class DB:
         with self.conn() as c:
             c.execute("UPDATE jobs SET archived=? WHERE id=?", (1 if archived else 0, job_id))
 
+    def requeue_stale_running(self, lock_busy) -> int:
+        """把状态为 running、但 job 目录没有进程占锁的任务改回 queued。
+
+        服务重启会中断正在跑的任务；不重置的话它会永远卡在 running，
+        队列也不会再调度（踩过：上传 31 个文件后重启，两个任务卡死）。
+        """
+        moved = 0
+        with self.conn() as c:
+            rows = c.execute("SELECT id FROM jobs WHERE status='running'").fetchall()
+            for r in rows:
+                jid = r["id"] if isinstance(r, dict) or hasattr(r, "__getitem__") else r[0]
+                try:
+                    if lock_busy(jid):
+                        continue
+                except Exception:
+                    pass
+                c.execute("UPDATE jobs SET status='queued', progress=0, stage=NULL WHERE id=?", (jid,))
+                moved += 1
+        return moved
+
     def next_queued(self) -> dict | None:
         with self.conn() as c:
             r = c.execute("SELECT * FROM jobs WHERE status='queued' ORDER BY created_at LIMIT 1").fetchone()

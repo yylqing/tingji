@@ -1348,3 +1348,26 @@ class TestRecursiveScan(unittest.TestCase):
         cfg = type("C", (), {"input_path": root})()
         self.assertEqual(display_name(cfg, f), "课程／第1讲.m4a")
         self.assertEqual(display_name(cfg, root / "top.wav"), "top.wav")
+
+
+class TestRequeueStale(unittest.TestCase):
+    def _db(self):
+        import tempfile, pathlib
+        from app.db import DB
+        return DB(pathlib.Path(tempfile.mkdtemp()) / "q.db")
+
+    def test_requeue_when_lock_free(self):
+        db = self._db()
+        jid = db.create_job("a.wav", "/tmp/a.wav", "s1", 1, 10)
+        db.update_job(jid, status="running", progress=30)
+        n = db.requeue_stale_running(lambda j: False)
+        self.assertEqual(n, 1)
+        self.assertEqual(db.get_job(jid)["status"], "queued")
+
+    def test_keep_running_when_locked(self):
+        db = self._db()
+        jid = db.create_job("b.wav", "/tmp/b.wav", "s2", 1, 10)
+        db.update_job(jid, status="running")
+        n = db.requeue_stale_running(lambda j: True)
+        self.assertEqual(n, 0)
+        self.assertEqual(db.get_job(jid)["status"], "running")

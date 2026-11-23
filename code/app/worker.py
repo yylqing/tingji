@@ -80,9 +80,30 @@ def run_once(db: DB, cfg: Config) -> bool:
     return True
 
 
+def _lock_busy(cfg: Config, jid: str) -> bool:
+    """判断某个任务的 job 目录是否正被别的进程占用。"""
+    import fcntl
+    lock = cfg.work_path / jid / ".lock"
+    if not lock.exists():
+        return False
+    try:
+        with open(lock, "w") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        return False
+    except OSError:
+        return True
+
+
 def worker_loop(cfg: Config, stop: threading.Event | None = None) -> None:
     db = DB(cfg.db_path)
     log.info("worker 启动，db=%s", cfg.db_path)
+    try:
+        n = db.requeue_stale_running(lambda jid: _lock_busy(cfg, jid))
+        if n:
+            log.warning("重置 %d 个中断的任务为排队（服务重启导致）", n)
+    except Exception as e:
+        log.warning("重置中断任务失败（忽略）: %s", e)
     while not (stop and stop.is_set()):
         if not run_once(db, cfg):
             time.sleep(2)
