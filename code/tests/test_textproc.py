@@ -1466,3 +1466,12 @@ class TestMergeSegment(unittest.TestCase):
         db.merge_segment_next(jid, 0)
         ws = json.loads(db.get_segments(jid)[0]["words"])
         self.assertEqual([w["t"] for w in ws], ["a", "c"])
+
+
+class TestResourceWaitRetry(unittest.TestCase):
+    def test_pipeline_waits_before_requeue(self):
+        import inspect
+        from app import pipeline
+        src = inspect.getsource(pipeline.run_job)
+        self.assertIn("time.sleep(15)", src)
+        self.assertIn('status="queued"', src)

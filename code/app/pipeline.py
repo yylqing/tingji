@@ -173,6 +173,12 @@ def run_job(db, cfg, job_id: str) -> None:
     try:
         from . import resource
         ok, why = resource.check(cfg, float(job.get("duration_sec") or 0))
+        # 内存常被上一个任务的 Ollama 占着，等它释放比立刻退回队列更有效
+        for _ in range(3):
+            if ok:
+                break
+            time.sleep(15)
+            ok, why = resource.check(cfg, float(job.get("duration_sec") or 0))
         if not ok:
             # 内存/磁盘暂时不够：退回排队，等资源释放后重试，
             # 直接标 failed 会让整批任务卡住（踩过：31 个批量任务里 2 个被误判失败）
