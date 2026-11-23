@@ -114,7 +114,7 @@ Location: /v1/audio/transcriptions/{job_id}
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/jobs?archived=0` | 任务列表；`archived=1` 含已归档 |
+| GET | `/api/jobs?archived=0` | 任务列表；`archived=1` 含已归档。每项带 `group`（嵌套上传的第一层目录，顶层文件为空串） |
 | POST | `/api/jobs` | 上传音频入队，form-data `file`；返回 `{"id","queued"}` |
 | GET | `/api/jobs/{jid}` | 任务详情：`job / segments / paragraphs / summary / export` |
 | DELETE | `/api/jobs/{jid}?keep_archive=0` | 删除任务及输出（Obsidian 笔记不动） |
@@ -125,7 +125,7 @@ Location: /v1/audio/transcriptions/{job_id}
 | POST | `/api/jobs/{jid}/enroll` | 把任务里的说话人样本入库（body 可选 `speaker`） |
 | GET | `/api/jobs/{jid}/stages` | 流水线各阶段状态与耗时 |
 | GET | `/api/jobs/{jid}/events` | 事件日志（分页 `limit/offset`） |
-| GET | `/api/jobs/{jid}/export?fmt=srt` | 导出 `srt/vtt/txt/json` |
+| GET | `/api/jobs/{jid}/export?format=srt` | 导出：逐字稿 `srt/vtt/txt`、**整理稿 `md` / `txt-md`**（`level=paragraph` 等价） |
 | GET | `/api/audio/{jid}` | 试听音频（Range 支持） |
 
 ### 2.2 段落校对

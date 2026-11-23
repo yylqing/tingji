@@ -1371,3 +1371,51 @@ class TestRequeueStale(unittest.TestCase):
         n = db.requeue_stale_running(lambda j: True)
         self.assertEqual(n, 0)
         self.assertEqual(db.get_job(jid)["status"], "running")
+
+
+class TestJobGroupAndExport(unittest.TestCase):
+    def _app(self):
+        import tempfile, pathlib
+        from app.settings import load_config
+        from app.web import create_app
+        cfg = load_config()
+        tmp = pathlib.Path(tempfile.mkdtemp())
+        for k in ("data_dir", "work_dir", "output_dir", "input_dir"):
+            setattr(cfg.app, k, str(tmp / k.replace("_dir", "")))
+            (tmp / k.replace("_dir", "")).mkdir(parents=True, exist_ok=True)
+        cfg.server.bind = "127.0.0.1"
+        cfg.server.token = ""
+        return create_app(cfg), cfg
+
+    def test_jobs_group_field(self):
+        from fastapi.testclient import TestClient
+        from app.db import DB
+        app, cfg = self._app()
+        db = DB(cfg.db_path)
+        db.create_job("课程／第1讲.m4a", "/tmp/a.m4a", "s1", 1, 60)
+        db.create_job("单独.m4a", "/tmp/b.m4a", "s2", 1, 60)
+        c = TestClient(app)
+        rows = c.get("/api/jobs").json()
+        groups = {r["source_name"]: r["group"] for r in rows}
+        self.assertEqual(groups["课程／第1讲.m4a"], "课程")
+        self.assertEqual(groups["单独.m4a"], "")
+
+    def test_export_markdown(self):
+        from fastapi.testclient import TestClient
+        from app.db import DB
+        app, cfg = self._app()
+        db = DB(cfg.db_path)
+        jid = db.create_job("测试.m4a", "/tmp/t.m4a", "s3", 1, 125)
+        db.save_paragraphs(jid, [
+            {"idx": 0, "start_ms": 0, "end_ms": 5000, "spk": 0, "text": "第一段内容。"},
+            {"idx": 1, "start_ms": 5000, "end_ms": 9000, "spk": 0, "text": "第二段内容。"},
+        ])
+        c = TestClient(app)
+        r = c.get(f"/api/jobs/{jid}/export?format=md")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/markdown", r.headers["content-type"])
+        self.assertIn("第一段内容", r.text)
+        self.assertIn("说话人1", r.text)
+        r2 = c.get(f"/api/jobs/{jid}/export?format=txt-md")
+        self.assertEqual(r2.status_code, 200)
+        self.assertIn("第一段内容", r2.text)

@@ -68,6 +68,8 @@ table{width:100%;border-collapse:separate;border-spacing:0}
 th{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);
   text-align:left;padding:10px 12px;border-bottom:3px solid var(--border)}
 td{padding:12px;border-bottom:2px solid #F2E3C6;vertical-align:top}
+tr.grp td{background:#FFF3D2;cursor:pointer;border-bottom:2px solid var(--border)}
+tr.grp:hover td{background:var(--yellow)}
 tr:last-child td{border-bottom:0}
 .badge{display:inline-block;padding:1px 10px;border-radius:999px;border:2px solid var(--border);
   background:var(--yellow);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -80,6 +82,7 @@ tr:last-child td{border-bottom:0}
 .bar>i{display:block;height:100%;background:var(--pink)}
 .seg{display:flex;gap:12px;padding:8px;border:2px solid transparent;border-radius:var(--r-sm);cursor:pointer}
 .seg:hover{background:#FFF3D2;border-color:var(--border)}
+.seg.flash{background:var(--yellow);box-shadow:3px 3px 0 var(--pink);animation:flash 1.4s ease}
 .t{color:var(--ink2);font-variant-numeric:tabular-nums;flex:0 0 128px;font-size:13px}
 .spk{color:var(--pink);font-weight:700}
 .ov{color:var(--err);font-size:12px}
@@ -143,6 +146,7 @@ details[open]>summary{margin-bottom:14px}
   h1{font-size:30px}.card{padding:16px;border-radius:16px;box-shadow:5px 5px 0 var(--cyan)}
   .t{flex-basis:76px}.fields{grid-template-columns:1fr}table{font-size:13px}th,td{padding:8px}
 }
+@keyframes flash{0%{background:var(--yellow)}100%{background:transparent}}
 </style></head><body>
 <header><b>听记</b><span class="ver">v__VER__</span><a href="/">任务</a><a href="/hotwords">热词</a><a href="/voices">声纹库</a><a href="/logs">日志</a><a href="/settings">设置</a></header>
 <main id="app">__BODY__</main>
@@ -285,20 +289,54 @@ def create_app(cfg: Config) -> FastAPI:
 <div class="card"><table><thead><tr><th>文件</th><th>时长</th><th>状态</th><th>进度</th><th>阶段</th><th></th></tr></thead>
 <tbody id="rows"><tr><td colspan="6" class="mut">加载中…</td></tr></tbody></table></div>"""
         js = """
-async function load(){
-  const showA=$('#showArch')&&$('#showArch').checked?'1':'0';
-  const d=await (await fetch('/api/jobs?archived='+showA)).json();
-  $('#cnt').textContent=d.length+' 个任务';
-  $('#rows').innerHTML=d.map(j=>`<tr>
-    <td>${esc(j.source_name)}</td><td>${(j.duration_sec/60).toFixed(1)}m</td>
+const COLLAPSED=new Set(JSON.parse(localStorage.getItem('tingji-collapsed-groups')||'[]'));
+function toggleGroup(g){
+  if(COLLAPSED.has(g)) COLLAPSED.delete(g); else COLLAPSED.add(g);
+  localStorage.setItem('tingji-collapsed-groups',JSON.stringify([...COLLAPSED]));
+  load();
+}
+function jobRow(j, indent){
+  const name=indent?(j.source_name.split('／').slice(1).join('／')||j.source_name):j.source_name;
+  return `<tr data-group="${esc(j.group||'')}">
+    <td>${indent?'<span class="mut">└ </span>':''}${esc(name)}</td>
+    <td>${(j.duration_sec/60).toFixed(1)}m</td>
     <td><span class="badge b-${j.status}">${j.status}</span></td>
     <td><div class="bar"><i style="width:${j.progress}%"></i></div></td>
     <td class="mut">${j.stage||'-'}<br><small>${esc(j.message||'')}</small></td>
     <td class="nowrap"><a href="/job/${j.id}">查看</a>
       ${j.archived?`<button class="mini" onclick="archiveJob('${j.id}',false)">恢复</button>`
                  :`<button class="mini" onclick="archiveJob('${j.id}',true)">归档</button>`}
-      <button class="mini danger" onclick="deleteJob('${j.id}')">删除</button></td></tr>`).join('')
-      ||'<tr><td colspan=6 class=mut>暂无任务</td></tr>';
+      <button class="mini danger" onclick="deleteJob('${j.id}')">删除</button></td></tr>`;
+}
+function groupRow(g, items){
+  const dur=items.reduce((a,j)=>a+(j.duration_sec||0),0)/3600;
+  const running=items.filter(j=>j.status==='running').length;
+  const queued=items.filter(j=>j.status==='queued').length;
+  const done=items.filter(j=>j.status==='done').length;
+  const open=!COLLAPSED.has(g);
+  return `<tr class="grp" onclick="toggleGroup('${esc(g)}')">
+    <td colspan=6>
+      <b>${open?'▾':'▸'} ${esc(g)}</b>
+      <span class="mut">　${items.length} 个任务 · ${dur.toFixed(1)} 小时 · 完成 ${done}${queued?' · 排队 '+queued:''}${running?' · <span style="color:var(--cyan)">进行 '+running+'</span>':''}</span>
+    </td></tr>`;
+}
+async function load(){
+  const showA=$('#showArch')&&$('#showArch').checked?'1':'0';
+  const d=await (await fetch('/api/jobs?archived='+showA)).json();
+  $('#cnt').textContent=d.length+' 个任务';
+  // 顶层文件（没有分组）先列，再按文件夹分组
+  const tops=d.filter(j=>!j.group);
+  const groups=new Map();
+  d.filter(j=>j.group).forEach(j=>{
+    if(!groups.has(j.group)) groups.set(j.group,[]);
+    groups.get(j.group).push(j);
+  });
+  let html=tops.map(j=>jobRow(j,false)).join('');
+  for(const [g,items] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'zh'))){
+    html+=groupRow(g,items);
+    if(!COLLAPSED.has(g)) html+=items.map(j=>jobRow(j,true)).join('');
+  }
+  $('#rows').innerHTML=html||'<tr><td colspan=6 class=mut>暂无任务</td></tr>';
 }
 async function archiveJob(id, archived){
   await fetch('/api/jobs/'+id+'/archive',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -369,7 +407,7 @@ function render(){
   if(!DATA) return;
   const rows = TRACK==='para' ? (DATA.paragraphs||[]) : (DATA.segments||[]);
   const key = TRACK==='para' ? 'text' : TRACK;
-  $('#body').innerHTML=rows.map((s,i)=>`<div class="seg" data-i="${i}">
+  $('#body').innerHTML=rows.map((s,i)=>`<div class="seg" data-i="${i}" data-idx="${s.idx??''}">
     <span class="t">${ms(s.start_ms)}–${ms(s.end_ms)}</span>
     <span class="txt"><span class="spk">${esc(s.speaker)}</span> ${(TRACK==='raw'&&s.words&&s.words.length)
       ? s.words.map(w=>`<span class="w" data-t="${w.s}" title="${ms(w.s)}–${ms(w.e)}${w.approx?'（估算）':''}">${esc(w.t)}</span>`).join('')
@@ -416,7 +454,9 @@ async function loadFlow(){
     </div>`).join('');
   }catch(e){}
 }
-async function load(){
+async function load(opts){
+  opts=opts||{};
+  const keepY=window.scrollY;
   loadFlow();
   const r=await fetch('/api/jobs/'+JID); if(!r.ok){$('#head').textContent='任务不存在';return}
   DATA=await r.json(); const j=DATA.job;
@@ -425,7 +465,10 @@ async function load(){
       <span class="mut">　${(j.duration_sec/60).toFixed(1)} 分钟 · ${j.stage||''} · ${esc(j.message||'')}</span>
       ${DATA.export&&DATA.export.note?`<br><small class="mut">Obsidian: ${esc(DATA.export.note)}</small>`:''}</div>
     <div class="row">
-      <select id="fmt" style="width:auto"><option value="srt">SRT</option><option value="vtt">VTT</option><option value="txt">TXT</option></select>
+      <select id="fmt" style="width:auto">
+        <option value="srt">逐字稿 SRT</option><option value="vtt">逐字稿 VTT</option><option value="txt">逐字稿 TXT</option>
+        <option value="md">整理稿 Markdown</option><option value="txt-md">整理稿 TXT</option>
+      </select>
       <button onclick="doExport()">导出</button>
       <button onclick="enrollFromJob()">声纹入库</button>
       <button onclick="rematch()">重新认名</button>
@@ -435,6 +478,17 @@ async function load(){
     <div class="bar" style="width:100%;margin-top:10px"><i style="width:${j.progress}%"></i></div>`;
   if(DATA.has_audio){$('#audioCard').style.display='block'; if(!$('#player').src) $('#player').src='/api/audio/'+JID;}
   render();
+  // 操作后不要跳回页面顶部：优先滚到被操作的那一段，否则保持原滚动位置
+  if(opts.focusIdx!=null){
+    const el=document.querySelector('.seg[data-idx="'+opts.focusIdx+'"]');
+    if(el){
+      el.scrollIntoView({block:'center',behavior:'smooth'});
+      el.classList.add('flash');
+      setTimeout(()=>el.classList.remove('flash'),1500);
+      return;
+    }
+  }
+  window.scrollTo(0, keepY);
 }
 async function rerun(){await fetch('/api/jobs/'+JID+'/rerun',{method:'POST'});load()}
 async function enrollFromJob(){
@@ -462,7 +516,7 @@ async function setSpk(idx, cur){
   const n=parseInt(v); if(isNaN(n)) return alert('请输入数字'); 
   await fetch('/api/jobs/'+JID+'/segments/'+idx,{method:'PATCH',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({speaker:n})});
-  alert('已修改，点「重跑」会重建整理稿'); load();
+  alert('已修改，点「重跑」会重建整理稿'); load({focusIdx:idx});
 }
 function splitCandidates(seg){
   // 从词级时间戳里找"停顿最大"的位置作为候选切点（一句话里有两个人，多半有停顿）
@@ -499,11 +553,11 @@ async function doSplit(idx, at){
   const d=await r.json();
   if(!r.ok) return alert(d.detail||'拆分失败');
   $('#splitBox').style.display='none';
-  load();
+  load({focusIdx:idx});
 }
 async function mergeNext(idx){
   await fetch('/api/jobs/'+JID+'/segments/'+idx,{method:'PATCH',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({merge_next:true})}); load();
+    body:JSON.stringify({merge_next:true})}); load({focusIdx:idx});
 }
 async function delSeg(idx){
   if(!confirm('删除这一段？')) return;
@@ -1572,7 +1626,12 @@ renderSlots(); load();
 
     @app.get("/api/jobs")
     def api_jobs(archived: int = 0):
-        return db.list_jobs(include_archived=bool(archived))
+        rows = db.list_jobs(include_archived=bool(archived))
+        # 嵌套上传的任务名形如「课程／第1讲.m4a」，前端按第一段做分组
+        for j in rows:
+            name = j.get("source_name") or ""
+            j["group"] = name.split("／", 1)[0] if "／" in name else ""
+        return rows
 
     @app.post("/api/jobs/{jid}/archive")
     def api_archive_job(jid: str, body: dict | None = None):
@@ -1854,8 +1913,8 @@ renderSlots(); load();
         if not job:
             raise HTTPException(404)
         segs = db.get_segments(jid)
-        if not segs:
-            raise HTTPException(404, "还没有转写结果")
+
+        # 说话人显示名（优先声纹认名，其次按说话时长编号）
         names: dict[int, str] = {}
         sp = cfg.work_path / jid / "speakers.json"
         if sp.exists():
@@ -1863,18 +1922,68 @@ renderSlots(); load();
                 names = {int(k): v for k, v in json.loads(sp.read_text())["names"].items()}
             except Exception:
                 names = {}
-        per: dict[int, float] = {}
+        _per: dict[int, float] = {}
         for x in segs:
             if x["spk"] is not None and x["spk"] >= 0:
-                per[x["spk"]] = per.get(x["spk"], 0) + (x["end_ms"] - x["start_ms"]) / 1000
-        order = sorted(per, key=lambda k: -per[k])
-        renum = {k: i + 1 for i, k in enumerate(order)}
+                _per[x["spk"]] = _per.get(x["spk"], 0) + (x["end_ms"] - x["start_ms"]) / 1000
+        _order = sorted(_per, key=lambda k: -_per[k])
+        _renum = {k: i + 1 for i, k in enumerate(_order)}
+
+        def who(spk):
+            if spk is None or spk < 0:
+                return "未知"
+            return names.get(spk) or f"说话人{_renum.get(spk, spk + 1)}"
+
+        # 整理稿导出：不依赖逐字稿，段落由 LLM 生成
+        if format in ("md", "markdown", "refined", "txt-md") or level == "paragraph":
+            paras = db.get_paragraphs(jid)
+            if not paras:
+                raise HTTPException(404, "还没有整理稿（先跑「重跑」或等流水线完成）")
+            sm = db.get_summary(jid) or {}
+            from .obsidian import hms as _hms
+            title = sm.get("title") or Path(job["source_name"]).stem
+            mins = (job.get("duration_sec") or 0) / 60
+            out = [f"# {title}", ""]
+            out.append(f"> 音频：{job['source_name']}　时长：{mins:.1f} 分钟")
+            if sm.get("doc_type"):
+                out.append(f"> 类型：{sm['doc_type']}")
+            out.append("")
+            if format == "txt-md" or (format == "txt" and level == "paragraph"):
+                lines = [title, f"音频：{job['source_name']}　时长：{mins:.1f} 分钟", ""]
+                last = None
+                for x in paras:
+                    spk = x.get("spk")
+                    w = who(spk) if spk is not None else (x.get("speaker") or "说话人")
+                    if w != last:
+                        lines.append(f"{w}：")
+                        last = w
+                    lines.append(f"  {x.get('text','')}")
+                body_txt = "\n".join(lines)
+                raw_body = body_txt
+                media = "text/plain; charset=utf-8"
+                ext = "txt"
+            else:
+                last = None
+                for x in paras:
+                    spk = x.get("spk")
+                    w = who(spk) if spk is not None else (x.get("speaker") or "说话人")
+                    if w != last:
+                        out.append(f"**{w}**")
+                        last = w
+                    out.append(f"`[{_hms(x.get('start_ms', 0))}]` {x.get('text','')}")
+                    out.append("")
+                raw_body = "\n".join(out)
+                media = "text/markdown; charset=utf-8"
+                ext = "md"
+            fname = quote(f"{Path(job['source_name']).stem}-整理稿.{ext}")
+            return Response(raw_body, media_type=media,
+                            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{fname}"})
+
+        if not segs:
+            raise HTTPException(404, "还没有转写结果")
 
         def label(x):
-            k = x["spk"]
-            if k is None or k < 0:
-                return "未知"
-            return names.get(k) or f"说话人{renum.get(k, k + 1)}"
+            return who(x["spk"])
 
         def text_of(x):
             if track == "raw":
