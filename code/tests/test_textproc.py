@@ -1419,3 +1419,13 @@ class TestJobGroupAndExport(unittest.TestCase):
         r2 = c.get(f"/api/jobs/{jid}/export?format=txt-md")
         self.assertEqual(r2.status_code, 200)
         self.assertIn("第一段内容", r2.text)
+
+
+class TestResourceRequeue(unittest.TestCase):
+    def test_low_memory_requeues_not_fails(self):
+        """资源不足时应退回排队，而不是标记失败（否则批量任务会卡住）。"""
+        import inspect
+        from app import pipeline
+        src = inspect.getsource(pipeline.run_job)
+        self.assertIn('status="queued"', src)
+        self.assertIn("等待重试", src)

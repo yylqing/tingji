@@ -174,8 +174,11 @@ def run_job(db, cfg, job_id: str) -> None:
         from . import resource
         ok, why = resource.check(cfg, float(job.get("duration_sec") or 0))
         if not ok:
-            db.update_job(job_id, status="failed", message=f"资源不足，未开始：{why}")
-            db.log(job_id, "error", "resource", why)
+            # 内存/磁盘暂时不够：退回排队，等资源释放后重试，
+            # 直接标 failed 会让整批任务卡住（踩过：31 个批量任务里 2 个被误判失败）
+            db.update_job(job_id, status="queued", progress=0, stage=None,
+                          message=f"资源不足，等待重试：{why}")
+            db.log(job_id, "warning", "resource", f"{why}；已退回队列")
             return
     except Exception as e:
         log.warning("资源检查失败（忽略）: %s", e)
