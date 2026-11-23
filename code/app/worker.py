@@ -19,6 +19,32 @@ AUDIO_EXT = {
 }
 
 
+def iter_audio(cfg: Config):
+    """递归枚举 input/ 下的音频文件（跳过隐藏文件与 ._ 资源叉）。
+
+    之前只 glob("*") 扫第一层，子文件夹里的录音会被忽略。
+    """
+    for p in sorted(cfg.input_path.rglob("*")):
+        if not p.is_file():
+            continue
+        if p.suffix.lower() not in AUDIO_EXT:
+            continue
+        if any(part.startswith(".") for part in p.relative_to(cfg.input_path).parts):
+            continue
+        yield p
+
+
+def display_name(cfg: Config, path: Path) -> str:
+    """嵌套文件用相对路径做名字，避免不同子目录里的同名文件互相覆盖输出目录。"""
+    try:
+        rel = path.resolve().relative_to(cfg.input_path.resolve())
+    except ValueError:
+        return path.name
+    if len(rel.parts) == 1:
+        return path.name
+    return "／".join(rel.parts)      # 全角斜杠：可读且能当文件名
+
+
 def ingest(db: DB, cfg: Config, path: Path) -> str | None:
     from .engines import FFmpeg
     path = path.resolve()
@@ -31,7 +57,7 @@ def ingest(db: DB, cfg: Config, path: Path) -> str | None:
     info = FFmpeg.probe(path)
     if info["duration"] <= 0:
         raise ValueError("无法解码或无时长")
-    return db.create_job(path.name, str(path), sha, info["size"], info["duration"])
+    return db.create_job(display_name(cfg, path), str(path), sha, info["size"], info["duration"])
 
 
 def run_once(db: DB, cfg: Config) -> bool:
@@ -66,13 +92,13 @@ def scan_input(cfg: Config) -> int:
     """把 input/ 里未处理过的文件入队。"""
     db = DB(cfg.db_path)
     n = 0
-    for p in sorted(cfg.input_path.glob("*")):
-        if p.is_file() and p.suffix.lower() in AUDIO_EXT:
-            try:
-                if ingest(db, cfg, p):
-                    n += 1
-            except Exception as e:
-                log.warning("跳过 %s: %s", p.name, e)
+    for p in iter_audio(cfg):
+        try:
+            if ingest(db, cfg, p):
+                n += 1
+                log.info("入队 %s", display_name(cfg, p))
+        except Exception as e:
+            log.warning("跳过 %s: %s", display_name(cfg, p), e)
     return n
 
 
@@ -87,7 +113,7 @@ def watch_input(cfg: Config, stop: threading.Event) -> None:
     db = DB(cfg.db_path)
     while not stop.is_set():
         try:
-            files = sorted(cfg.input_path.glob("*"))
+            files = list(iter_audio(cfg))
         except Exception:
             files = []
         now = time.monotonic()

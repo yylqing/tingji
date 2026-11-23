@@ -1321,3 +1321,30 @@ class TestSpeakerText(unittest.TestCase):
         self.assertIn("张三：", out)
         self.assertIn("李四：", out)
         self.assertEqual(len(out.split("\n")), 2)
+
+
+class TestRecursiveScan(unittest.TestCase):
+    def test_iter_audio_finds_nested(self):
+        import tempfile, pathlib
+        from app.worker import iter_audio
+        from app.settings import AppCfg
+        root = pathlib.Path(tempfile.mkdtemp())
+        (root / "sub").mkdir()
+        (root / "a.wav").write_bytes(b"x")
+        (root / "sub" / "b.m4a").write_bytes(b"x")
+        (root / "sub" / ".DS_Store").write_bytes(b"x")
+        (root / "sub" / "note.txt").write_text("x")
+        cfg = type("C", (), {"input_path": root})()
+        names = sorted(p.name for p in iter_audio(cfg))
+        self.assertEqual(names, ["a.wav", "b.m4a"])
+
+    def test_display_name_nested(self):
+        import tempfile, pathlib
+        from app.worker import display_name
+        root = pathlib.Path(tempfile.mkdtemp())
+        (root / "课程").mkdir()
+        f = root / "课程" / "第1讲.m4a"
+        f.write_bytes(b"x")
+        cfg = type("C", (), {"input_path": root})()
+        self.assertEqual(display_name(cfg, f), "课程／第1讲.m4a")
+        self.assertEqual(display_name(cfg, root / "top.wav"), "top.wav")
