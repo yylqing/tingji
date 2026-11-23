@@ -239,3 +239,38 @@ class LlmEngine:
             return True
         except Exception:
             return False
+
+
+class GlobalJobLock:
+    """整机只允许一个转写任务在跑（跨进程）。
+
+    每个 ASR 模型实例约占 4GB；两个进程同时跑就可能把 16GB 机器打到 OOM，
+    表现为"服务进程莫名消失"。
+    """
+
+    def __init__(self, work_dir, timeout: float = 0.0):
+        self.path = Path(work_dir) / ".global.lock"
+        self.timeout = timeout
+        self.fh = None
+
+    def __enter__(self):
+        import fcntl, time as _t
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.fh = open(self.path, "w")
+        deadline = _t.monotonic() + self.timeout
+        while True:
+            try:
+                fcntl.flock(self.fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return self
+            except OSError:
+                if _t.monotonic() >= deadline:
+                    self.fh.close()
+                    raise RuntimeError("这台机器上已有任务正在处理")
+                _t.sleep(2)
+
+    def __exit__(self, *exc):
+        try:
+            import fcntl
+            fcntl.flock(self.fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            self.fh.close()

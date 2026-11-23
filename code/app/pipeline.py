@@ -189,8 +189,18 @@ def run_job(db, cfg, job_id: str) -> None:
     except Exception as e:
         log.warning("资源检查失败（忽略）: %s", e)
 
-    with JobLock(wdir):
-        _run_job_locked(db, cfg, job_id, job, src, wdir, outdir)
+    # 全局互斥：ASR 模型每个进程约 4GB，两个任务并发就可能被系统 OOM 杀掉
+    # （踩过：手动 CLI 任务 + 队列任务 + 另一个还原任务同时跑，服务进程消失）
+    from .engines import GlobalJobLock
+    try:
+        with GlobalJobLock(cfg.work_path), JobLock(wdir):
+            _run_job_locked(db, cfg, job_id, job, src, wdir, outdir)
+    except RuntimeError as e:
+        db.update_job(job_id, status="queued", progress=0, stage=None,
+                      message=f"等待其他任务结束：{e}")
+        db.log(job_id, "warning", "resource", "另一个任务正在处理，已退回队列")
+        time.sleep(5)
+        return
 
 
 def _run_job_locked(db, cfg, job_id, job, src, wdir, outdir) -> None:

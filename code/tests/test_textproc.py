@@ -1475,3 +1475,28 @@ class TestResourceWaitRetry(unittest.TestCase):
         src = inspect.getsource(pipeline.run_job)
         self.assertIn("time.sleep(15)", src)
         self.assertIn('status="queued"', src)
+
+
+class TestGlobalJobLock(unittest.TestCase):
+    def test_second_acquire_fails(self):
+        import tempfile, pathlib
+        from app.engines import GlobalJobLock
+        d = pathlib.Path(tempfile.mkdtemp())
+        with GlobalJobLock(d):
+            with self.assertRaises(RuntimeError):
+                with GlobalJobLock(d):
+                    pass
+        # 释放后可以再次获取
+        with GlobalJobLock(d):
+            pass
+
+    def test_timeout_waits(self):
+        import tempfile, pathlib, time
+        from app.engines import GlobalJobLock
+        d = pathlib.Path(tempfile.mkdtemp())
+        with GlobalJobLock(d):
+            t0 = time.monotonic()
+            with self.assertRaises(RuntimeError):
+                with GlobalJobLock(d, timeout=0.3):
+                    pass
+            self.assertGreaterEqual(time.monotonic() - t0, 0.2)
