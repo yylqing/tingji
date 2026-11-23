@@ -249,11 +249,22 @@ class DB:
             nxt = c.execute("SELECT * FROM segments WHERE job_id=? AND idx=?", (job_id, idx + 1)).fetchone()
             if not cur or not nxt:
                 return False
-            txt = (cur["final_text"] or cur["clean_text"] or cur["raw_text"] or "") + \
-                  (nxt["final_text"] or nxt["clean_text"] or nxt["raw_text"] or "")
             raw = (cur["raw_text"] or "") + (nxt["raw_text"] or "")
-            c.execute("UPDATE segments SET end_ms=?, raw_text=?, final_text=? WHERE job_id=? AND idx=?",
-                      (nxt["end_ms"], raw, txt, job_id, idx))
+            clean = (cur["clean_text"] or "") + (nxt["clean_text"] or "")
+            final = (cur["final_text"] or "") + (nxt["final_text"] or "")
+            # 词级时间戳也合并，否则"原文"轨道只剩前半句
+            import json as _json
+            words = None
+            try:
+                w1 = _json.loads(cur["words"]) if cur["words"] else []
+                w2 = _json.loads(nxt["words"]) if nxt["words"] else []
+                if w1 or w2:
+                    words = _json.dumps(list(w1) + list(w2), ensure_ascii=False)
+            except Exception:
+                words = cur["words"]
+            c.execute("UPDATE segments SET end_ms=?, raw_text=?, clean_text=?, final_text=?, words=?"
+                      " WHERE job_id=? AND idx=?",
+                      (nxt["end_ms"], raw, clean, final, words, job_id, idx))
             c.execute("DELETE FROM segments WHERE job_id=? AND idx=?", (job_id, idx + 1))
             self._renumber_after(c, job_id, idx + 1)
             return True

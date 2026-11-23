@@ -1429,3 +1429,40 @@ class TestResourceRequeue(unittest.TestCase):
         src = inspect.getsource(pipeline.run_job)
         self.assertIn('status="queued"', src)
         self.assertIn("等待重试", src)
+
+
+class TestMergeSegment(unittest.TestCase):
+    def _db(self):
+        import tempfile, pathlib
+        from app.db import DB
+        return DB(pathlib.Path(tempfile.mkdtemp()) / "m.db")
+
+    def test_merge_keeps_all_tracks(self):
+        db = self._db()
+        jid = db.create_job("a.wav", "/tmp/a.wav", "m1", 1, 10)
+        db.save_segments(jid, [
+            {"start_ms": 0, "end_ms": 1000, "raw_text": "我有点难过，", "clean_text": "我有点难过",
+             "final_text": "我有点难过", "quality": 1.0, "spk": 0},
+            {"start_ms": 1000, "end_ms": 2000, "raw_text": "怀孕不好玩。", "clean_text": "怀孕不好玩",
+             "final_text": "怀孕不好玩", "quality": 1.0, "spk": 0},
+        ])
+        self.assertTrue(db.merge_segment_next(jid, 0))
+        seg = db.get_segments(jid)[0]
+        self.assertEqual(seg["raw_text"], "我有点难过，怀孕不好玩。")
+        self.assertEqual(seg["clean_text"], "我有点难过怀孕不好玩")
+        self.assertEqual(seg["final_text"], "我有点难过怀孕不好玩")
+        self.assertEqual(seg["end_ms"], 2000)
+
+    def test_merge_concats_words(self):
+        import json
+        db = self._db()
+        jid = db.create_job("b.wav", "/tmp/b.wav", "m2", 1, 10)
+        db.save_segments(jid, [
+            {"start_ms": 0, "end_ms": 1000, "raw_text": "ab", "final_text": "ab", "quality": 1.0,
+             "spk": 0, "words": [{"t": "a", "s": 0, "e": 400}]},
+            {"start_ms": 1000, "end_ms": 2000, "raw_text": "cd", "final_text": "cd", "quality": 1.0,
+             "spk": 0, "words": [{"t": "c", "s": 900, "e": 1200}]},
+        ])
+        db.merge_segment_next(jid, 0)
+        ws = json.loads(db.get_segments(jid)[0]["words"])
+        self.assertEqual([w["t"] for w in ws], ["a", "c"])
